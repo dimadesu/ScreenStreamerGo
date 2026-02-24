@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto">
+
+  <item
+    android:id="@+id/action_device"
+    android:orderInCategory="100"
+    android:title="Select Device"
+    app:showAsAction="never" />
+
+  <item
+    android:id="@+id/action_video_format"
+    android:orderInCategory="100"
+    android:title="Video Format"
+    app:showAsAction="never" />
+
+  <item
+    android:id="@+id/action_safely_eject"
+    android:orderInCategory="100"
+    android:title="Safely Eject"
+    app:showAsAction="never" />
+
+</menu>
