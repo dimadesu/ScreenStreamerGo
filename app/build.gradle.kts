@@ -19,8 +19,8 @@ android {
         targetSdk = 35
         compileSdk = 36
 
-        versionCode = 10
-        versionName = "1.26.0"
+        versionCode = 1
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,7 +55,7 @@ android {
     applicationVariants.all {
         outputs.all {
             (this as com.android.build.gradle.internal.api.BaseVariantOutputImpl).outputFileName =
-                "LifeStreamer-v${versionName}-${name}.apk"
+                "ScreenStreamerGo-v${versionName}-${name}.apk"
         }
     }
     
@@ -118,7 +118,7 @@ afterEvaluate {
         doLast {
             val originalBundle = file("${projectDir}/release/app-release.aab")
             if (originalBundle.exists()) {
-                val newName = "LifeStreamer-v${android.defaultConfig.versionName}-release.aab"
+                val newName = "ScreenStreamerGo-v${android.defaultConfig.versionName}-release.aab"
                 val newFile = File(originalBundle.parent, newName)
                 Files.copy(originalBundle.toPath(), newFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
             }
