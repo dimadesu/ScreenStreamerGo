@@ -126,7 +126,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
         ).build()
         srtEndpointPreference.isVisible = endpoint.hasSrtCapabilities
         rtmpEndpointPreference.isVisible = endpoint.hasRtmpCapabilities
-        tsMuxerPreference.isVisible = endpoint.hasTSCapabilities
+        // tsMuxerPreference.isVisible = endpoint.hasTSCapabilities
+        tsMuxerPreference.isVisible = false
 
         // Update supported values with a new info
         streamerInfo = when (endpointType) {
