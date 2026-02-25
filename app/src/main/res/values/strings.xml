@@ -50,7 +50,7 @@
     <string name="audio_encoder_opus">Opus</string>
     <string name="server_stream_id_key">server_stream_id_key</string>
     <string name="server_stream_id">Stream ID</string>
-    <string name="default_server_stream_id">StreamPack</string>
+    <string name="default_server_stream_id"></string>
     <string name="server_passphrase_key">server_passphrase_key</string>
     <string name="server_passphrase">Passphrase</string>
     <string name="default_server_passphrase_id">""</string>
