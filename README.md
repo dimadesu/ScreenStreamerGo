@@ -36,7 +36,7 @@ Open [GitHub releases page](https://github.com/dimadesu/ScreenStreamerGo/release
 
 There are already existing screen sharing apps on Android. They want to charge money for this, so they make free functionality somehow limited.
 
-This project simply allows getting doing the same for free. It's all open source and legit.
+This project allows getting similar functionality as paid apps for free. It's all open source and legit.
 
 ## Related projects
 
