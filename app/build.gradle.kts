@@ -96,17 +96,6 @@ dependencies {
     implementation("io.github.thibaultbee.streampack:streampack-srt:3.1.1")
     implementation("io.github.thibaultbee.streampack:streampack-flv:3.1.1")
 
-    implementation("com.herohan:UVCAndroid:1.0.11")
-    implementation("com.google.code.gson:gson:2.11.0")
-
-    implementation("androidx.media3:media3-exoplayer:1.8.0")
-    implementation("androidx.media3:media3-ui:1.8.0")
-    implementation("androidx.media3:media3-datasource-rtmp:1.8.0") {
-        exclude(group = "io.antmedia", module = "rtmp-client")
-    }
-    // Use JitPack version with 16KB page alignment fix (PR #110 merged Sep 2025)
-    implementation("com.github.mcxinyu:LibRtmp-Client-for-Android:v3.2.0.m2")
-
     testImplementation(libs.junit)
 
     androidTestImplementation(libs.androidx.junit)
