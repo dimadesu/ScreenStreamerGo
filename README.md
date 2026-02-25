@@ -7,6 +7,7 @@ ScreenStreamerGo is a free Android app designed for screen sharing on the go bas
 - Simple app to stream your phone screen via SRT or RTMP protocols.
 - Video encoders: H.264 and H.265 (aka HEVC).
 - Audio encoders: AAC and Opus.
+  - :x: Assume that audio doesn't work. There is something weird during audio playback in OBS via media source (maybe mute it in OBS for now). Needs to be looked at and fixed.
 - Light and dark UI modes.
 - It's based on the StreamPack screen sharing demo app. See StreamPack feature list [here](https://github.com/ThibaultBee/StreamPack?tab=readme-ov-file#features).
 - Can use SRTLA bonding via [Bond Bunny](https://github.com/dimadesu/bond-bunny) app.
