@@ -5,12 +5,19 @@ ScreenStreamerGo is a free Android app designed for screen sharing on the go bas
 ## Features
 
 - Simple app to stream your phone screen via SRT or RTMP protocols.
-- Can use SRTLA bonding via [Bond Bunny](https://github.com/dimadesu/bond-bunny) app.
+- Video encoders: H.264 and H.265 (aka HEVC).
+- Audio encoders: AAC and Opus.
+- Light and dark UI modes.
 - It's based on the StreamPack screen sharing demo app. See StreamPack feature list [here](https://github.com/ThibaultBee/StreamPack?tab=readme-ov-file#features).
+- Can use SRTLA bonding via [Bond Bunny](https://github.com/dimadesu/bond-bunny) app.
+- Note: When using [NOALBS](https://github.com/NOALBS/nginx-obs-automatic-low-bitrate-switching) or similar bitrate can be very low while image quality is still high on static screens (as there is no difference between frames and video encoder is compressing this very well).
 
 ### Roadmap
-- :x: Add dynamic/adaptive bitrate algorithms from [Belabox](https://belabox.net/) ant/or [Moblin](https://github.com/eerimoq/moblin).
 - :x: Aggressive infinite reconnect when app loses connection.
+- :x: Add dynamic/adaptive bitrate algorithms from [Belabox](https://belabox.net/) ant/or [Moblin](https://github.com/eerimoq/moblin). Note: As bitrate is often low already this might not be needed.
+- :x: Open app on notification click.
+- :x: Choice of recording device mic and/or device audio.
+- Etc.
 
 ![ScreenStreamerGo screenshot](docs/ScreenStreamerGo-screenshot.png)
 
