@@ -1,89 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- Bluetooth permissions for audio routing -->
-    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
-    <!-- Android 12+ requires BLUETOOTH_CONNECT for SCO audio routing -->
-    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- USB Camera permissions -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
-    
-    <!-- Explicitly remove MANAGE_EXTERNAL_STORAGE added by dependencies -->
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" tools:node="remove" />
-
-    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
-
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Required for media projection foreground service on Android 14+ -->
-    <uses-permission android:name="android.permission.CAPTURE_VIDEO_OUTPUT" />
-    <uses-permission android:name="android.permission.PROJECT_MEDIA" />
-
-    <uses-feature android:name="android.hardware.camera" />
-    <uses-feature android:name="android.hardware.microphone" />
-
     <application
-        android:allowAudioPlaybackCapture="true"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppCompat.NoActionBar">
+        android:theme="@style/Theme.StreamPack">
         <activity
-            android:name=".ui.main.MainActivity"
+            android:name=".MainActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:theme="@style/Theme.StreamPack.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".ui.settings.SettingsActivity" />
-        <activity android:name=".ui.help.RtmpHelpActivity" />
-        <activity android:name=".ui.help.SrtHelpActivity" />
-        <activity android:name=".ui.help.UvcHelpActivity" />
-        <activity android:name=".ui.help.FaqHelpActivity" />
-        <activity android:name=".ui.help.KnownIssuesActivity" />
+        <activity android:name=".settings.SettingsActivity" />
 
-        <!-- UVC Camera Test Activity -->
-        <activity
-            android:name=".uvc.UvcTestActivity"
-            android:exported="true"
-            android:launchMode="singleTask">
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-            </intent-filter>
-
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/device_filter" />
-        </activity>
-
-        <!-- Camera streaming service for background streaming capability -->
         <service
-            android:name=".services.CameraStreamerService"
-            android:exported="false"
-            android:foregroundServiceType="camera|microphone" />
-
-        <!-- MediaProjection service for audio capture with required foreground service type -->
-        <service
-            android:name=".rtmp.audio.MediaProjectionService"
+            android:name=".services.DemoMediaProjectionService"
+            android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaProjection" />
     </application>

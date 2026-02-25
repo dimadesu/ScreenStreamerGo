@@ -89,11 +89,12 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.datastore)
 
-    implementation("io.github.thibaultbee.streampack:streampack-core:3.0.1-SNAPSHOT")
-    implementation("io.github.thibaultbee.streampack:streampack-ui:3.0.1-SNAPSHOT")
-    implementation("io.github.thibaultbee.streampack:streampack-services:3.0.1-SNAPSHOT")
-    implementation("io.github.thibaultbee.streampack:streampack-rtmp:3.0.1-SNAPSHOT")
-    implementation("io.github.thibaultbee.streampack:streampack-srt:3.0.1-SNAPSHOT")
+    implementation("io.github.thibaultbee.streampack:streampack-core:3.1.1")
+    implementation("io.github.thibaultbee.streampack:streampack-ui:3.1.1")
+    implementation("io.github.thibaultbee.streampack:streampack-services:3.1.1")
+    implementation("io.github.thibaultbee.streampack:streampack-rtmp:3.1.1")
+    implementation("io.github.thibaultbee.streampack:streampack-srt:3.1.1")
+    implementation("io.github.thibaultbee.streampack:streampack-flv:3.1.1")
 
     implementation("com.herohan:UVCAndroid:1.0.11")
     implementation("com.google.code.gson:gson:2.11.0")

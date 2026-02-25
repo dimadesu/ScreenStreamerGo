@@ -15,18 +15,9 @@
  */
 package com.dimadesu.screenstreamergo.models
 
-import androidx.annotation.StringRes
-import com.dimadesu.screenstreamergo.R
-
-enum class EndpointType(val id: Int, @StringRes val labelResId: Int) {
-    TS_FILE(0, R.string.to_ts_file),
-    FLV_FILE(1, R.string.to_flv_file),
-    SRT(2, R.string.to_srt),
-    RTMP(3, R.string.to_rtmp),
-    MP4_FILE(4, R.string.to_mp4_file),
-    WEBM_FILE(5, R.string.to_webm_file),
-    OGG_FILE(6, R.string.to_ogg_file),
-    THREEGP_FILE(7, R.string.to_3gp_file);
+enum class EndpointType(val id: Int) {
+    SRT(0),
+    RTMP(1);
 
     companion object {
         fun fromId(id: Int): EndpointType = entries.first { it.id == id }
