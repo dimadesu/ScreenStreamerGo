@@ -104,13 +104,13 @@
             app:title="@string/srt_server">
 
             <EditTextPreference
-                app:defaultValue=""
+                app:defaultValue="localhost"
                 app:key="@string/server_ip_key"
                 app:title="@string/server_ip"
                 app:useSimpleSummaryProvider="true" />
 
             <EditTextPreference
-                app:defaultValue="9998"
+                app:defaultValue="6000"
                 app:key="@string/server_port_key"
                 app:title="@string/server_port"
                 app:useSimpleSummaryProvider="true" />
