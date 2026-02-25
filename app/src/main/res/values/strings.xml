@@ -73,8 +73,8 @@
     <string name="default_rtmp_url">rtmp://localhost:1935/publish/live</string>
     <string name="rtmp_server_url_key">rtmp_server_url_key</string>
     <string name="server_url">URL</string>
-    <string name="to_srt">Stream to a remote SRT device</string>
-    <string name="to_rtmp">Stream to a remote RTMP device</string>
+    <string name="to_srt">Stream SRT</string>
+    <string name="to_rtmp">Stream RTMP</string>
     <string name="audio_byte_format_8bit">8 bits</string>
     <string name="audio_byte_format_16bit">16 bits</string>
     <string name="audio_byte_format_float">Float</string>
