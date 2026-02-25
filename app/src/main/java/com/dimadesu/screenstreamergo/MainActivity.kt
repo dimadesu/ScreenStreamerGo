@@ -22,6 +22,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Display
@@ -85,6 +86,10 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     override fun onResume() {
@@ -114,6 +119,10 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         stopService()
     }
+
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* silently proceed whether granted or not */ }
 
     private val requestAudioPermissionsLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
