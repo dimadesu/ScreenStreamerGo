@@ -36,6 +36,8 @@ includeBuild("StreamPack") {
             .using(project(":streampack-rtmp"))
         substitute(module("io.github.thibaultbee.streampack:streampack-srt"))
             .using(project(":streampack-srt"))
+        substitute(module("io.github.thibaultbee.streampack:streampack-flv"))
+            .using(project(":streampack-flv"))
     }
 }
  
