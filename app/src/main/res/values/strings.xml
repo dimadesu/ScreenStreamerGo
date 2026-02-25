@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Screen Recorder</string>
+    <string name="app_name">ScreenStreamerGo</string>
 
     <!--Main activity -->
     <string name="action_settings">Settings</string>
