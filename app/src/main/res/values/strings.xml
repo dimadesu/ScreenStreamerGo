@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">LifeStreamer</string>
+    <string name="app_name">ScreenStreamerGo</string>
 
     <string name="action_settings">Settings</string>
     <string name="action_rtmp_help">How to use RTMP as source</string>
@@ -14,7 +14,7 @@
     <string name="streaming_channel_description">Notification channel for camera streaming service</string>
 
     <!-- Service Notifications -->
-    <string name="service_notification_title">LifeStreamer</string>
+    <string name="service_notification_title">ScreenStreamerGo</string>
     <string name="service_notification_text_created">Service created</string>
 
     <!-- Stream status labels -->

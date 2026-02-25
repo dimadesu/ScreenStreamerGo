@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "LifeStreamer"
+rootProject.name = "ScreenStreamerGo"
 include(":app")
 
 // Include StreamPack as a composite build

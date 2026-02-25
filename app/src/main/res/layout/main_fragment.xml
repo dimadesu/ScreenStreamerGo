@@ -7,7 +7,7 @@
 
         <variable
             name="viewmodel"
-            type="com.dimadesu.lifestreamer.ui.main.PreviewViewModel" />
+            type="com.dimadesu.screenstreamergo.ui.main.PreviewViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -353,7 +353,7 @@
             app:layout_constraintStart_toStartOf="@+id/audioSourceLayout"
             app:layout_constraintEnd_toEndOf="@+id/audioSourceLayout">
 
-            <com.dimadesu.lifestreamer.ui.components.AudioLevelMeterView
+            <com.dimadesu.screenstreamergo.ui.components.AudioLevelMeterView
                 android:id="@+id/audioLevelMeter"
                 android:layout_width="match_parent"
                 android:layout_height="14dp" />

@@ -10,10 +10,10 @@ plugins {
 }
 
 android {
-    namespace = "com.dimadesu.lifestreamer"
+    namespace = "com.dimadesu.screenstreamergo"
 
     defaultConfig {
-        applicationId = "com.dimadesu.lifestreamer"
+        applicationId = "com.dimadesu.screenstreamergo"
 
         minSdk = 24
         targetSdk = 35
