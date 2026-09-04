@@ -59,6 +59,25 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
      */
     //override val rotationProvider: IRotationProvider? = null
 
+    // Base onCreate() already starts foreground with the mediaProjection type; only
+    // add the microphone type while actively streaming so its scope matches actual use.
+    override fun onStreamingStart() {
+        super.onStreamingStart()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            androidx.core.app.ServiceCompat.startForeground(
+                this,
+                0x4569,
+                onCreateNotification(),
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            )
+        }
+    }
+
+    override fun onStreamingStop() {
+        super.onStreamingStop()
+        stopSelf()
+    }
+
     /**
      * Override to use another audio source.
      */
