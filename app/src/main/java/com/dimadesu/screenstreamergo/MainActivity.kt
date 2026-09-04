@@ -110,6 +110,8 @@ class MainActivity : AppCompatActivity() {
                     }
                     connection?.let { unbindService(it) }
                     connection = null
+                    val intent = Intent(this@MainActivity, DemoMediaProjectionService::class.java)
+                    stopService(intent)
                 }
             }
         }
@@ -117,7 +119,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        stopService()
+        connection?.let { unbindService(it) }
+        connection = null
     }
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(
@@ -140,6 +143,12 @@ class MainActivity : AppCompatActivity() {
 
     private var getContent =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val intent = Intent(this, DemoMediaProjectionService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(intent)
+            } else {
+                startService(intent)
+            }
             connection = MediaProjectionService.bindService(
                 context = this,
                 serviceClass = DemoMediaProjectionService::class.java,
@@ -268,13 +277,6 @@ class MainActivity : AppCompatActivity() {
             )
             Log.e(TAG, "Error while starting streamer", t)
         }
-    }
-
-    private fun stopService() {
-        connection?.let { unbindService(it) }
-        connection = null
-        val intent = Intent(this, DemoMediaProjectionService::class.java)
-        stopService(intent)
     }
 
     private fun showPopup() {
