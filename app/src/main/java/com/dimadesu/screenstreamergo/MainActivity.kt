@@ -57,7 +57,7 @@ import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
 import com.dimadesu.screenstreamergo.models.EndpointType
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_SOURCE_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_SOURCE_MICROPHONE_KEY
+import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_SOURCE_MEDIA_PROJECTION_KEY
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.CFR_FPS_KEY
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
 import io.github.thibaultbee.streampack.services.MediaProjectionService
@@ -192,7 +192,7 @@ class MainActivity : AppCompatActivity() {
                     Log.i(TAG, "Service disconnected")
                 },
                 onExtra = { extra ->
-                    extra.putExtra(AUDIO_SOURCE_KEY, AUDIO_SOURCE_MICROPHONE_KEY)
+                    extra.putExtra(AUDIO_SOURCE_KEY, AUDIO_SOURCE_MEDIA_PROJECTION_KEY)
                     extra.putExtra(CFR_FPS_KEY, getCalculatedFps())
                 }
             )
