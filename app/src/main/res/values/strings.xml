@@ -85,6 +85,6 @@
     <string name="audio_input">Audio input</string>
     <string name="audio_input_microphone">Device microphone</string>
     <string name="audio_input_media_projection">Media Projection (device audio)</string>
-    <string name="default_audio_input">mediaProjection</string>
+    <string name="default_audio_input">microphone</string>
 
 </resources>

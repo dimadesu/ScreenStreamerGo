@@ -194,8 +194,8 @@ class MainActivity : AppCompatActivity() {
                 },
                 onExtra = { extra ->
                     val audioInputValue = when (configuration.audio.audioInput) {
-                        "microphone" -> AUDIO_INPUT_MICROPHONE_KEY
-                        else -> AUDIO_INPUT_MEDIA_PROJECTION_KEY
+                        "mediaProjection" -> AUDIO_INPUT_MEDIA_PROJECTION_KEY
+                        else -> AUDIO_INPUT_MICROPHONE_KEY
                     }
                     extra.putExtra(AUDIO_INPUT_KEY, audioInputValue)
                     extra.putExtra(CFR_FPS_KEY, getCalculatedFps())

@@ -231,12 +231,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         audioInputListPreference.entryValues = entryValues.toTypedArray()
 
         if (audioInputListPreference.entry == null) {
-            // Default to mediaProjection on Q+, microphone on older
-            audioInputListPreference.value = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                "mediaProjection"
-            } else {
-                "microphone"
-            }
+            audioInputListPreference.value = "microphone"
         }
     }
 
