@@ -87,8 +87,8 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
         mediaProjection: MediaProjection,
         extras: Bundle
     ): IAudioSourceInternal.Factory {
-        val audioSource = extras.getString(AUDIO_SOURCE_KEY)
-        return if (audioSource == AUDIO_SOURCE_MEDIA_PROJECTION_KEY) {
+        val audioInput = extras.getString(AUDIO_INPUT_KEY)
+        return if (audioInput == AUDIO_INPUT_MEDIA_PROJECTION_KEY) {
             /**
              * For audio playback as audio source.
              */
@@ -100,14 +100,14 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
                     "Media projection audio source is not supported on this version of Android"
                 )
             }
-        } else if (audioSource == AUDIO_SOURCE_MICROPHONE_KEY) {
+        } else if (audioInput == AUDIO_INPUT_MICROPHONE_KEY) {
             /**
              * For microphone as audio source.
              */
             MicrophoneSourceFactory()
         } else {
             throw IllegalArgumentException(
-                "Audio source $audioSource is not supported. Use $AUDIO_SOURCE_MEDIA_PROJECTION_KEY or $AUDIO_SOURCE_MICROPHONE_KEY"
+                "Audio input $audioInput is not supported. Use $AUDIO_INPUT_MEDIA_PROJECTION_KEY or $AUDIO_INPUT_MICROPHONE_KEY"
             )
         }
     }
@@ -165,9 +165,9 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
     }
 
     companion object {
-        internal const val AUDIO_SOURCE_KEY = "audioSource"
-        internal const val AUDIO_SOURCE_MICROPHONE_KEY = "microphone"
-        internal const val AUDIO_SOURCE_MEDIA_PROJECTION_KEY = "mediaProjection"
+        internal const val AUDIO_INPUT_KEY = "audioInput"
+        internal const val AUDIO_INPUT_MICROPHONE_KEY = "microphone"
+        internal const val AUDIO_INPUT_MEDIA_PROJECTION_KEY = "mediaProjection"
         const val CFR_FPS_KEY = "cfrFps"
     }
 }

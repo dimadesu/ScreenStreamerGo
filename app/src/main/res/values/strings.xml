@@ -80,5 +80,11 @@
     <string name="audio_byte_format_float">Float</string>
     <string name="live_in_progress">Streaming…</string>
 
+    <!-- Audio input -->
+    <string name="audio_input_key">audio_input_key</string>
+    <string name="audio_input">Audio input</string>
+    <string name="audio_input_microphone">Device microphone</string>
+    <string name="audio_input_media_projection">Media Projection (device audio)</string>
+    <string name="default_audio_input">mediaProjection</string>
 
 </resources>

@@ -56,8 +56,9 @@ import io.github.thibaultbee.streampack.ext.srt.configuration.mediadescriptor.Sr
 import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
 import com.dimadesu.screenstreamergo.models.EndpointType
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_SOURCE_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_SOURCE_MEDIA_PROJECTION_KEY
+import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_KEY
+import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_MEDIA_PROJECTION_KEY
+import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_MICROPHONE_KEY
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.CFR_FPS_KEY
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
 import io.github.thibaultbee.streampack.services.MediaProjectionService
@@ -192,7 +193,11 @@ class MainActivity : AppCompatActivity() {
                     Log.i(TAG, "Service disconnected")
                 },
                 onExtra = { extra ->
-                    extra.putExtra(AUDIO_SOURCE_KEY, AUDIO_SOURCE_MEDIA_PROJECTION_KEY)
+                    val audioInputValue = when (configuration.audio.audioInput) {
+                        "microphone" -> AUDIO_INPUT_MICROPHONE_KEY
+                        else -> AUDIO_INPUT_MEDIA_PROJECTION_KEY
+                    }
+                    extra.putExtra(AUDIO_INPUT_KEY, audioInputValue)
                     extra.putExtra(CFR_FPS_KEY, getCalculatedFps())
                 }
             )

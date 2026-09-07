@@ -36,6 +36,12 @@
             app:title="@string/settings">
 
             <ListPreference
+                app:defaultValue="@string/default_audio_input"
+                app:key="@string/audio_input_key"
+                app:title="@string/audio_input"
+                app:useSimpleSummaryProvider="true" />
+
+            <ListPreference
                 app:defaultValue="@string/default_audio_encoder"
                 app:key="@string/audio_encoder_key"
                 app:title="@string/audio_encoder"

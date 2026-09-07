@@ -17,6 +17,7 @@ package com.dimadesu.screenstreamergo.settings
 
 import android.media.AudioFormat
 import android.media.MediaFormat
+import android.os.Build
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.InputType
@@ -52,6 +53,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     private val audioSettingsCategory: PreferenceCategory by lazy {
         this.findPreference(getString(R.string.audio_settings_key))!!
+    }
+
+    private val audioInputListPreference: ListPreference by lazy {
+        this.findPreference(getString(R.string.audio_input_key))!!
     }
 
     private val audioEncoderListPreference: ListPreference by lazy {
@@ -184,6 +189,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun loadAudioSettings() {
+        // Inflates audio input
+        loadAudioInputSettings()
+
         // Inflates audio encoders
         val supportedAudioEncoderName =
             mapOf(
@@ -205,6 +213,31 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         loadAudioSettings(audioEncoderListPreference.value)
+    }
+
+    private fun loadAudioInputSettings() {
+        val entries = mutableListOf<String>()
+        val entryValues = mutableListOf<String>()
+
+        entries.add(getString(R.string.audio_input_microphone))
+        entryValues.add("microphone")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            entries.add(getString(R.string.audio_input_media_projection))
+            entryValues.add("mediaProjection")
+        }
+
+        audioInputListPreference.entries = entries.toTypedArray()
+        audioInputListPreference.entryValues = entryValues.toTypedArray()
+
+        if (audioInputListPreference.entry == null) {
+            // Default to mediaProjection on Q+, microphone on older
+            audioInputListPreference.value = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                "mediaProjection"
+            } else {
+                "microphone"
+            }
+        }
     }
 
     private fun loadAudioSettings(encoder: String) {
