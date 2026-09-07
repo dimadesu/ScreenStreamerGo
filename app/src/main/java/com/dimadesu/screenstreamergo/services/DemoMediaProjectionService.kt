@@ -69,7 +69,7 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
             androidx.core.app.ServiceCompat.startForeground(
                 this,
                 0x4569,
-                onCreateNotification(),
+                onOpenNotification(),
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             )
         }
