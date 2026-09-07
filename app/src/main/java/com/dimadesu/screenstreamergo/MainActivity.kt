@@ -58,6 +58,7 @@ import com.dimadesu.screenstreamergo.models.EndpointType
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_SOURCE_KEY
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_SOURCE_MICROPHONE_KEY
+import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.CFR_FPS_KEY
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
 import io.github.thibaultbee.streampack.services.MediaProjectionService
 import kotlinx.coroutines.launch
@@ -181,22 +182,27 @@ class MainActivity : AppCompatActivity() {
                 },
                 onExtra = { extra ->
                     extra.putExtra(AUDIO_SOURCE_KEY, AUDIO_SOURCE_MICROPHONE_KEY)
+                    extra.putExtra(CFR_FPS_KEY, getCalculatedFps())
                 }
             )
         }
 
-    private fun configure(streamer: IVideoStreamer<*>) {
+    private fun getCalculatedFps(): Int {
         val deviceRefreshRate =
             (this.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager).getDisplay(
                 Display.DEFAULT_DISPLAY
             ).refreshRate.toInt()
-        val fps = if (MediaCodecHelper.Video.getFramerateRange(configuration.video.encoder)
+        return if (MediaCodecHelper.Video.getFramerateRange(configuration.video.encoder)
                 .contains(deviceRefreshRate)
         ) {
             deviceRefreshRate
         } else {
             30
         }
+    }
+
+    private fun configure(streamer: IVideoStreamer<*>) {
+        val fps = getCalculatedFps()
 
         val videoConfig = VideoConfig(
             mimeType = configuration.video.encoder,
