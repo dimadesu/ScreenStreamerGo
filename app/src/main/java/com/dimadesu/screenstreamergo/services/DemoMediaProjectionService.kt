@@ -32,6 +32,8 @@ import io.github.thibaultbee.streampack.core.streamers.orientation.IRotationProv
 import io.github.thibaultbee.streampack.core.streamers.single.ISingleStreamer
 import io.github.thibaultbee.streampack.core.streamers.single.IVideoSingleStreamer
 import io.github.thibaultbee.streampack.core.streamers.single.audioVideoMediaProjectionSingleStreamer
+import io.github.thibaultbee.streampack.core.elements.sources.video.IVideoSourceInternal
+import io.github.thibaultbee.streampack.core.elements.sources.video.mediaprojection.MediaProjectionVideoSourceFactory
 import com.dimadesu.screenstreamergo.R
 import com.dimadesu.screenstreamergo.models.Actions
 import io.github.thibaultbee.streampack.services.MediaProjectionService
@@ -110,6 +112,14 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
         }
     }
 
+    override fun createDefaultVideoSource(
+        mediaProjection: MediaProjection,
+        extras: Bundle
+    ): IVideoSourceInternal.Factory? {
+        val fps = extras.getInt(CFR_FPS_KEY, 0)
+        return MediaProjectionVideoSourceFactory(mediaProjection, cfrFps = fps)
+    }
+
     /**
      * Override the [onStartCommand] to handle the stop action.
      */
@@ -151,5 +161,6 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
         internal const val AUDIO_SOURCE_KEY = "audioSource"
         internal const val AUDIO_SOURCE_MICROPHONE_KEY = "microphone"
         internal const val AUDIO_SOURCE_MEDIA_PROJECTION_KEY = "mediaProjection"
+        const val CFR_FPS_KEY = "cfrFps"
     }
 }
