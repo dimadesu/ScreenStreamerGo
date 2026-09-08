@@ -78,7 +78,7 @@
     <string name="audio_byte_format_8bit">8 bits</string>
     <string name="audio_byte_format_16bit">16 bits</string>
     <string name="audio_byte_format_float">Float</string>
-    <string name="live_in_progress">In progress…</string>
+    <string name="live_in_progress">Streaming…</string>
 
 
 </resources>

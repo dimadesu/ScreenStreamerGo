@@ -69,7 +69,7 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
             androidx.core.app.ServiceCompat.startForeground(
                 this,
                 0x4569,
-                onCreateNotification(),
+                onOpenNotification(),
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION or android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
             )
         }
@@ -141,14 +141,21 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
      * A custom notification with a stop action.
      */
     override fun onOpenNotification(): Notification {
-        val intent =
+        val stopServiceIntent =
             Intent(this, DemoMediaProjectionService::class.java).setAction(Actions.STOP.value)
         val stopIntent =
-            PendingIntent.getService(this, 5678, intent, PendingIntent.FLAG_IMMUTABLE)
+            PendingIntent.getService(this, 5678, stopServiceIntent, PendingIntent.FLAG_IMMUTABLE)
+
+        val openAppIntent = Intent(this, com.dimadesu.screenstreamergo.MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val contentIntent =
+            PendingIntent.getActivity(this, 5679, openAppIntent, PendingIntent.FLAG_IMMUTABLE)
 
         return NotificationCompat.Builder(this, channelId)
             .setSmallIcon(notificationIconResourceId)
             .setContentTitle(getString(R.string.live_in_progress))
+            .setContentIntent(contentIntent)
             .addAction(
                 R.drawable.ic_baseline_stop_24,
                 getString(R.string.stop),
