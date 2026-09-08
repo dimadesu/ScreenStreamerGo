@@ -21,12 +21,14 @@ import android.content.Intent
 import android.media.projection.MediaProjection
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.thibaultbee.streampack.core.elements.sources.audio.IAudioSourceInternal
 import io.github.thibaultbee.streampack.core.elements.sources.audio.audiorecord.MediaProjectionAudioSourceFactory
 import io.github.thibaultbee.streampack.core.elements.sources.audio.audiorecord.MicrophoneSourceFactory
 import io.github.thibaultbee.streampack.core.interfaces.ICloseableStreamer
+import io.github.thibaultbee.streampack.core.interfaces.IWithAudioSource
 import io.github.thibaultbee.streampack.core.streamers.dual.IVideoDualStreamer
 import io.github.thibaultbee.streampack.core.streamers.orientation.IRotationProvider
 import io.github.thibaultbee.streampack.core.streamers.single.ISingleStreamer
@@ -63,6 +65,16 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
 
     // Base onCreate() already starts foreground with the mediaProjection type; only
     // add the microphone type while actively streaming so its scope matches actual use.
+    override fun onCreate() {
+        super.onCreate()
+        isRunning = true
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isRunning = false
+    }
+
     override fun onStreamingStart() {
         super.onStreamingStart()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -87,8 +99,8 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
         mediaProjection: MediaProjection,
         extras: Bundle
     ): IAudioSourceInternal.Factory {
-        val audioSource = extras.getString(AUDIO_SOURCE_KEY)
-        return if (audioSource == AUDIO_SOURCE_MEDIA_PROJECTION_KEY) {
+        val audioInput = extras.getString(AUDIO_INPUT_KEY)
+        return if (audioInput == AUDIO_INPUT_MEDIA_PROJECTION_KEY) {
             /**
              * For audio playback as audio source.
              */
@@ -100,14 +112,14 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
                     "Media projection audio source is not supported on this version of Android"
                 )
             }
-        } else if (audioSource == AUDIO_SOURCE_MICROPHONE_KEY) {
+        } else if (audioInput == AUDIO_INPUT_MICROPHONE_KEY) {
             /**
              * For microphone as audio source.
              */
             MicrophoneSourceFactory()
         } else {
             throw IllegalArgumentException(
-                "Audio source $audioSource is not supported. Use $AUDIO_SOURCE_MEDIA_PROJECTION_KEY or $AUDIO_SOURCE_MICROPHONE_KEY"
+                "Audio input $audioInput is not supported. Use $AUDIO_INPUT_MEDIA_PROJECTION_KEY or $AUDIO_INPUT_MICROPHONE_KEY"
             )
         }
     }
@@ -125,11 +137,24 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
-            streamer.let {
-                if (intent.action == Actions.STOP.value) {
-                    lifecycleScope.launch {
-                        streamer.stopStream()
-                        (streamer as? ICloseableStreamer)?.close()
+            val currentStreamer = streamer
+            if (intent.action == Actions.STOP.value) {
+                lifecycleScope.launch {
+                    currentStreamer.stopStream()
+                    (currentStreamer as? ICloseableStreamer)?.close()
+                }
+            } else if (intent.action == Actions.CHANGE_AUDIO_INPUT.value) {
+                lifecycleScope.launch {
+                    mediaProjection?.let { mp ->
+                        if (currentStreamer is IWithAudioSource) {
+                            val extras = intent.extras ?: Bundle()
+                            try {
+                                val newSourceFactory = createDefaultAudioSource(mp, extras)
+                                currentStreamer.setAudioSource(newSourceFactory)
+                            } catch (e: Exception) {
+                                Log.e("DemoMediaProjection", "Failed to change audio source", e)
+                            }
+                        }
                     }
                 }
             }
@@ -165,9 +190,10 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
     }
 
     companion object {
-        internal const val AUDIO_SOURCE_KEY = "audioSource"
-        internal const val AUDIO_SOURCE_MICROPHONE_KEY = "microphone"
-        internal const val AUDIO_SOURCE_MEDIA_PROJECTION_KEY = "mediaProjection"
+        var isRunning = false
+        internal const val AUDIO_INPUT_KEY = "audioInput"
+        internal const val AUDIO_INPUT_MICROPHONE_KEY = "microphone"
+        internal const val AUDIO_INPUT_MEDIA_PROJECTION_KEY = "mediaProjection"
         const val CFR_FPS_KEY = "cfrFps"
     }
 }

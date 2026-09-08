@@ -17,6 +17,7 @@ package com.dimadesu.screenstreamergo.settings
 
 import android.media.AudioFormat
 import android.media.MediaFormat
+import android.os.Build
 import android.os.Bundle
 import android.text.InputFilter
 import android.text.InputType
@@ -31,9 +32,12 @@ import io.github.thibaultbee.streampack.core.elements.endpoints.composites.Compo
 import io.github.thibaultbee.streampack.core.elements.endpoints.composites.muxers.ts.TSMuxerInfo
 import io.github.thibaultbee.streampack.core.streamers.infos.StreamerConfigurationInfo
 import io.github.thibaultbee.streampack.ext.flv.elements.endpoints.composites.muxer.FlvMuxerInfo
+import android.content.Intent
 import com.dimadesu.screenstreamergo.R
+import com.dimadesu.screenstreamergo.models.Actions
 import com.dimadesu.screenstreamergo.models.EndpointFactory
 import com.dimadesu.screenstreamergo.models.EndpointType
+import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
 
 class SettingsFragment : PreferenceFragmentCompat() {
     private lateinit var streamerInfo: StreamerConfigurationInfo
@@ -52,6 +56,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
     private val audioSettingsCategory: PreferenceCategory by lazy {
         this.findPreference(getString(R.string.audio_settings_key))!!
+    }
+
+    private val audioInputListPreference: ListPreference by lazy {
+        this.findPreference(getString(R.string.audio_input_key))!!
     }
 
     private val audioEncoderListPreference: ListPreference by lazy {
@@ -184,6 +192,9 @@ class SettingsFragment : PreferenceFragmentCompat() {
     }
 
     private fun loadAudioSettings() {
+        // Inflates audio input
+        loadAudioInputSettings()
+
         // Inflates audio encoders
         val supportedAudioEncoderName =
             mapOf(
@@ -205,6 +216,41 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         loadAudioSettings(audioEncoderListPreference.value)
+    }
+
+    private fun loadAudioInputSettings() {
+        val entries = mutableListOf<String>()
+        val entryValues = mutableListOf<String>()
+
+        entries.add(getString(R.string.audio_input_microphone))
+        entryValues.add("microphone")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            entries.add(getString(R.string.audio_input_media_projection))
+            entryValues.add("mediaProjection")
+        }
+
+        audioInputListPreference.entries = entries.toTypedArray()
+        audioInputListPreference.entryValues = entryValues.toTypedArray()
+
+        if (audioInputListPreference.entry == null) {
+            audioInputListPreference.value = "microphone"
+        }
+
+        audioInputListPreference.setOnPreferenceChangeListener { _, newValue ->
+            if (DemoMediaProjectionService.isRunning) {
+                val intent = Intent(requireContext(), DemoMediaProjectionService::class.java).apply {
+                    action = Actions.CHANGE_AUDIO_INPUT.value
+                    val audioInputValue = when (newValue) {
+                        "mediaProjection" -> DemoMediaProjectionService.AUDIO_INPUT_MEDIA_PROJECTION_KEY
+                        else -> DemoMediaProjectionService.AUDIO_INPUT_MICROPHONE_KEY
+                    }
+                    putExtra(DemoMediaProjectionService.AUDIO_INPUT_KEY, audioInputValue)
+                }
+                requireContext().startService(intent)
+            }
+            true
+        }
     }
 
     private fun loadAudioSettings(encoder: String) {
