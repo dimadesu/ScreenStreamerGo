@@ -15,8 +15,8 @@ ScreenStreamerGo is a free Android app designed for screen sharing on the go bas
 ### Roadmap
 - :x: Aggressive infinite reconnect when app loses connection.
 - :x: Add dynamic/adaptive bitrate algorithms from [Belabox](https://belabox.net/) ant/or [Moblin](https://github.com/eerimoq/moblin). Note: As bitrate is often low already this might not be needed.
-- :x: Open app on notification click.
-- :x: Choice of recording device mic and/or device audio.
+- :white_check_mark: Open app on notification click.
+- :white_check_mark: Choice of recording device mic and/or device audio.
 - Etc.
 
 ![ScreenStreamerGo screenshot](docs/ScreenStreamerGo-screenshot.png)
