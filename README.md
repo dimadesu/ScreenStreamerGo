@@ -1,3 +1,5 @@
+Note: Screen sharing was recently added to [LifeStreamer](https://github.com/dimadesu/LifeStreamer) app, which already has adaptive bitrate + SRTLA bonding for IRL streaming implemented.
+
 # ScreenStreamerGo - free Android screen sharing app
 
 ScreenStreamerGo is a free Android app designed for screen sharing on the go based on [StreamPack SDK](https://github.com/ThibaultBee/StreamPack).
