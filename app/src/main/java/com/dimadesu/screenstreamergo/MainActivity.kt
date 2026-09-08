@@ -61,6 +61,7 @@ import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Compani
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.CFR_FPS_KEY
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
 import io.github.thibaultbee.streampack.services.MediaProjectionService
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
@@ -172,6 +173,16 @@ class MainActivity : AppCompatActivity() {
                     lifecycleScope.launch {
                         streamer.isStreamingFlow.collect { isStreaming ->
                             binding.liveButton.isChecked = isStreaming
+                        }
+                    }
+                    lifecycleScope.launch {
+                        streamer.isStreamingFlow.drop(1).collect { isStreaming ->
+                            if (!isStreaming) {
+                                // Clean up so the next start gets a fresh service & MediaProjection.
+                                connection?.let { unbindService(it) }
+                                connection = null
+                                this@MainActivity.streamer = null
+                            }
                         }
                     }
                     this.streamer = streamer
