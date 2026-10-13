@@ -67,6 +67,38 @@ class ExampleInstrumentedTest {
     }
 
     @Test
+    fun streamCoordinator_buildsValidConfigsAndDescriptors() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val coordinator = com.dimadesu.screenstreamergo.stream.StreamCoordinator(appContext)
+
+        val fps = coordinator.getCalculatedFps()
+        assertTrue("Calculated FPS must be > 0", fps > 0)
+
+        val videoConfig = coordinator.createVideoConfig()
+        assertNotNull(videoConfig)
+        assertEquals(fps, videoConfig.fps)
+        assertTrue("Bitrate must be positive", videoConfig.startBitrate > 0)
+
+        val audioConfig = coordinator.createAudioConfig()
+        assertNotNull(audioConfig)
+        assertTrue("Sample rate must be positive", audioConfig.sampleRate > 0)
+
+        val descriptor = coordinator.createMediaDescriptor()
+        assertNotNull("MediaDescriptor must not be null", descriptor)
+
+        val intent = android.content.Intent()
+        coordinator.prepareServiceExtras(intent)
+        assertTrue(
+            "Extra must have audio input key",
+            intent.hasExtra(com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.AUDIO_INPUT_KEY)
+        )
+        assertTrue(
+            "Extra must have CFR FPS key",
+            intent.hasExtra(com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.CFR_FPS_KEY)
+        )
+    }
+
+    @Test
     fun mainActivity_launchesAndDisplaysUiElements() {
         ActivityScenario.launch(MainActivity::class.java).use {
             // Verify main toggle button is displayed, visible, and initially not streaming

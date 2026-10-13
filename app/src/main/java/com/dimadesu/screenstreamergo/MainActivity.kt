@@ -20,65 +20,31 @@ import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.Display
 import android.view.Menu
 import android.view.MenuInflater
 import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
-import io.github.thibaultbee.streampack.core.configuration.mediadescriptor.UriMediaDescriptor
-import io.github.thibaultbee.streampack.core.elements.encoders.mediacodec.MediaCodecHelper
-import io.github.thibaultbee.streampack.core.elements.endpoints.composites.muxers.ts.data.TSServiceInfo
-import io.github.thibaultbee.streampack.core.interfaces.startStream
-import io.github.thibaultbee.streampack.core.streamers.IConfigurableAudioStreamer
-import io.github.thibaultbee.streampack.core.streamers.IVideoStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamerAudioConfig
-import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamerVideoConfig
-import io.github.thibaultbee.streampack.core.streamers.dual.IAudioDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.IDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.IVideoDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.AudioConfig
-import io.github.thibaultbee.streampack.core.streamers.single.IAudioSingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.ISingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.IVideoSingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.VideoConfig
-import io.github.thibaultbee.streampack.core.streamers.utils.MediaProjectionUtils
-import io.github.thibaultbee.streampack.ext.srt.configuration.mediadescriptor.SrtMediaDescriptor
 import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
-import com.dimadesu.screenstreamergo.models.EndpointType
 import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_MEDIA_PROJECTION_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_MICROPHONE_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.CFR_FPS_KEY
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
+import com.dimadesu.screenstreamergo.stream.StreamCoordinator
+import io.github.thibaultbee.streampack.core.streamers.IVideoStreamer
+import io.github.thibaultbee.streampack.core.streamers.utils.MediaProjectionUtils
 import io.github.thibaultbee.streampack.services.MediaProjectionService
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val configuration by lazy {
-        Configuration(this)
+    private val streamCoordinator by lazy {
+        StreamCoordinator(this)
     }
-
-    private val tsServiceInfo: TSServiceInfo
-        get() = TSServiceInfo(
-            TSServiceInfo.ServiceType.DIGITAL_TV,
-            0x4698,
-            configuration.muxer.service,
-            configuration.muxer.provider
-        )
 
     private var connection: ServiceConnection? = null
 
@@ -107,9 +73,8 @@ class MainActivity : AppCompatActivity() {
                 if (isChecked) {
                     requestAudioPermissionsLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 } else {
-                    runBlocking {
-                        streamer?.stopStream()
-                        streamer?.close()
+                    lifecycleScope.launch {
+                        streamCoordinator.stopStream(streamer)
                     }
                     connection?.let { unbindService(it) }
                     connection = null
@@ -161,7 +126,9 @@ class MainActivity : AppCompatActivity() {
                     streamer as IVideoStreamer<*> // Cast to streamer type
                     lifecycleScope.launch {
                         try {
-                            configure(streamer)
+                            streamCoordinator.configure(streamer)
+                            streamCoordinator.startStream(streamer)
+                            moveTaskToBack(true)
                         } catch (t: Throwable) {
                             this@MainActivity.showAlertDialog(
                                 this@MainActivity, "Error", t.message ?: "Unknown error"
@@ -169,7 +136,6 @@ class MainActivity : AppCompatActivity() {
                             binding.liveButton.isChecked = false
                             Log.e(TAG, "Error while starting streamer", t)
                         }
-                        startStream(streamer)
                     }
                     lifecycleScope.launch {
                         streamer.isStreamingFlow.collect { isStreaming ->
@@ -193,113 +159,10 @@ class MainActivity : AppCompatActivity() {
                     Log.i(TAG, "Service disconnected")
                 },
                 onExtra = { extra ->
-                    val audioInputValue = when (configuration.audio.audioInput) {
-                        "mediaProjection" -> AUDIO_INPUT_MEDIA_PROJECTION_KEY
-                        else -> AUDIO_INPUT_MICROPHONE_KEY
-                    }
-                    extra.putExtra(AUDIO_INPUT_KEY, audioInputValue)
-                    extra.putExtra(CFR_FPS_KEY, getCalculatedFps())
+                    streamCoordinator.prepareServiceExtras(extra)
                 }
             )
         }
-
-    private fun getCalculatedFps(): Int {
-        val deviceRefreshRate =
-            (this.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager).getDisplay(
-                Display.DEFAULT_DISPLAY
-            ).refreshRate.toInt()
-        return if (MediaCodecHelper.Video.getFramerateRange(configuration.video.encoder)
-                .contains(deviceRefreshRate)
-        ) {
-            deviceRefreshRate
-        } else {
-            30
-        }
-    }
-
-    private fun configure(streamer: IVideoStreamer<*>) {
-        val fps = getCalculatedFps()
-
-        val videoConfig = VideoConfig(
-            mimeType = configuration.video.encoder,
-            startBitrate = configuration.video.bitrate * 1000, // to b/s
-            resolution = configuration.video.resolution,
-            fps = fps
-        )
-        lifecycleScope.launch {
-            when (streamer) {
-                is IVideoSingleStreamer -> streamer.setVideoConfig(videoConfig)
-                is IVideoDualStreamer -> streamer.setVideoConfig(DualStreamerVideoConfig(videoConfig))
-                else -> throw IllegalStateException("Streamer is not a supported streamer")
-            }
-        }
-
-        if (streamer !is IConfigurableAudioStreamer<*>) {
-            Log.e(TAG, "Streamer does not support audio configuration")
-            return
-        }
-
-        val audioConfig = AudioConfig(
-            mimeType = configuration.audio.encoder,
-            startBitrate = configuration.audio.bitrate,
-            sampleRate = configuration.audio.sampleRate,
-            channelConfig = AudioConfig.getChannelConfig(configuration.audio.numberOfChannels),
-            byteFormat = configuration.audio.byteFormat
-        )
-
-        if (ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            lifecycleScope.launch {
-                when (streamer) {
-                    is IAudioSingleStreamer -> streamer.setAudioConfig(audioConfig)
-                    is IAudioDualStreamer -> streamer.setAudioConfig(
-                        DualStreamerAudioConfig(
-                            audioConfig
-                        )
-                    )
-
-                    else -> throw IllegalStateException("Streamer is not a audio streamer")
-                }
-            }
-        } else {
-            throw SecurityException("Permission RECORD_AUDIO must have been granted!")
-        }
-    }
-
-    private suspend fun startStream(streamer: IVideoStreamer<*>) {
-        try {
-            val descriptor = when (configuration.endpoint.type) {
-                EndpointType.SRT -> SrtMediaDescriptor(
-                    configuration.endpoint.srt.ip,
-                    configuration.endpoint.srt.port,
-                    configuration.endpoint.srt.streamID,
-                    configuration.endpoint.srt.passPhrase,
-                    serviceInfo = tsServiceInfo
-                )
-
-                EndpointType.RTMP -> UriMediaDescriptor(configuration.endpoint.rtmp.url.toUri())
-            }
-
-            when (streamer) {
-                is ISingleStreamer -> streamer.startStream(descriptor)
-
-                is IDualStreamer -> {
-                    Log.w(TAG, "Only first output will be used")
-                    streamer.first.startStream(descriptor)
-                }
-
-                else -> throw IllegalStateException("Streamer is not a supported streamer")
-            }
-            moveTaskToBack(true)
-        } catch (t: Throwable) {
-            this.showAlertDialog(
-                this, "Error", t.message ?: "Unknown error"
-            )
-            Log.e(TAG, "Error while starting streamer", t)
-        }
-    }
 
     private fun showPopup() {
         val popup = PopupMenu(this, binding.actions)
