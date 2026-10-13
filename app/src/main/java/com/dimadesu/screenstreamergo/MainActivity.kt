@@ -19,7 +19,6 @@ import android.Manifest
 import android.content.Context
 import android.content.DialogInterface
 import android.content.Intent
-import android.content.ServiceConnection
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -29,26 +28,21 @@ import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
-import com.dimadesu.screenstreamergo.stream.StreamCoordinator
-import io.github.thibaultbee.streampack.core.streamers.IVideoStreamer
+import com.dimadesu.screenstreamergo.stream.StreamManager
+import com.dimadesu.screenstreamergo.stream.StreamState
 import io.github.thibaultbee.streampack.core.streamers.utils.MediaProjectionUtils
-import io.github.thibaultbee.streampack.services.MediaProjectionService
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val streamCoordinator by lazy {
-        StreamCoordinator(this)
+    private val streamManager by lazy {
+        StreamManager.getInstance(this)
     }
-
-    private var connection: ServiceConnection? = null
-
-    private var streamer: IVideoStreamer<*>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,6 +53,8 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+
+        observeStreamState()
     }
 
     override fun onResume() {
@@ -73,22 +69,23 @@ class MainActivity : AppCompatActivity() {
                 if (isChecked) {
                     requestAudioPermissionsLauncher.launch(Manifest.permission.RECORD_AUDIO)
                 } else {
-                    lifecycleScope.launch {
-                        streamCoordinator.stopStream(streamer)
-                    }
-                    connection?.let { unbindService(it) }
-                    connection = null
-                    val intent = Intent(this@MainActivity, DemoMediaProjectionService::class.java)
-                    stopService(intent)
+                    streamManager.stopStreaming()
                 }
             }
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        connection?.let { unbindService(it) }
-        connection = null
+    private fun observeStreamState() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                streamManager.state.collect { state ->
+                    binding.liveButton.isChecked = (state is StreamState.Streaming)
+                    if (state is StreamState.Error) {
+                        showAlertDialog(this@MainActivity, "Error", state.message)
+                    }
+                }
+            }
+        }
     }
 
     private val requestNotificationPermissionLauncher = registerForActivityResult(
@@ -101,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         if (!isGranted) {
             showPermissionAlertDialog(this) { this.finish() }
         } else {
-            getContent.launch(
+            screenCaptureLauncher.launch(
                 MediaProjectionUtils.createScreenCaptureIntent(
                     this
                 )
@@ -109,59 +106,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private var getContent =
+    private val screenCaptureLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val intent = Intent(this, DemoMediaProjectionService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
+            val data = result.data
+            if (result.resultCode == RESULT_OK && data != null) {
+                streamManager.startStreaming(
+                    resultCode = result.resultCode,
+                    resultData = data,
+                    onStarted = { moveTaskToBack(true) }
+                )
             } else {
-                startService(intent)
+                binding.liveButton.isChecked = false
             }
-            connection = MediaProjectionService.bindService(
-                context = this,
-                serviceClass = DemoMediaProjectionService::class.java,
-                resultCode = result.resultCode,
-                resultData = result.data!!,
-                onServiceCreated = { streamer ->
-                    streamer as IVideoStreamer<*> // Cast to streamer type
-                    lifecycleScope.launch {
-                        try {
-                            streamCoordinator.configure(streamer)
-                            streamCoordinator.startStream(streamer)
-                            moveTaskToBack(true)
-                        } catch (t: Throwable) {
-                            this@MainActivity.showAlertDialog(
-                                this@MainActivity, "Error", t.message ?: "Unknown error"
-                            )
-                            binding.liveButton.isChecked = false
-                            Log.e(TAG, "Error while starting streamer", t)
-                        }
-                    }
-                    lifecycleScope.launch {
-                        streamer.isStreamingFlow.collect { isStreaming ->
-                            binding.liveButton.isChecked = isStreaming
-                        }
-                    }
-                    lifecycleScope.launch {
-                        streamer.isStreamingFlow.drop(1).collect { isStreaming ->
-                            if (!isStreaming) {
-                                // Clean up so the next start gets a fresh service & MediaProjection.
-                                connection?.let { unbindService(it) }
-                                connection = null
-                                this@MainActivity.streamer = null
-                            }
-                        }
-                    }
-                    this.streamer = streamer
-                },
-                onServiceDisconnected = {
-                    streamer = null
-                    Log.i(TAG, "Service disconnected")
-                },
-                onExtra = { extra ->
-                    streamCoordinator.prepareServiceExtras(extra)
-                }
-            )
         }
 
     private fun showPopup() {

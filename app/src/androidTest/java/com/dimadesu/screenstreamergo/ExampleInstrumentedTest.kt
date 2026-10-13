@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.rule.GrantPermissionRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -96,6 +97,18 @@ class ExampleInstrumentedTest {
             "Extra must have CFR FPS key",
             intent.hasExtra(com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.CFR_FPS_KEY)
         )
+    }
+
+    @Test
+    fun streamManager_initializesInIdleState() {
+        val appContext = InstrumentationRegistry.getInstrumentation().targetContext
+        val manager = com.dimadesu.screenstreamergo.stream.StreamManager.getInstance(appContext)
+
+        assertTrue(
+            "Initial state must be Idle",
+            manager.state.value is com.dimadesu.screenstreamergo.stream.StreamState.Idle
+        )
+        assertFalse("Initially isStreaming should be false", manager.isStreaming)
     }
 
     @Test
