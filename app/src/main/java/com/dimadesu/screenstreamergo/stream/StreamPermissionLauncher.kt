@@ -17,6 +17,7 @@ package com.dimadesu.screenstreamergo.stream
 
 import android.Manifest
 import android.app.Activity
+import android.os.Build
 import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
@@ -54,6 +55,19 @@ class StreamPermissionLauncher(
         } else {
             activity.showPermissionAlertDialog { activity.finish() }
             onConsentDenied()
+        }
+    }
+
+    private val notificationPermissionLauncher = activity.registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* silently proceed whether granted or not */ }
+
+    /**
+     * Requests the notification permission (Android 13+). Proceeds silently if denied.
+     */
+    fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 

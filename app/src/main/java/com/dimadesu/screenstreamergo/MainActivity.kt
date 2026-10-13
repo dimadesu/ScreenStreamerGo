@@ -15,19 +15,16 @@
  */
 package com.dimadesu.screenstreamergo
 
-import android.Manifest
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.widget.PopupMenu
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
-import com.dimadesu.screenstreamergo.stream.StreamManager
 import com.dimadesu.screenstreamergo.stream.StreamPermissionLauncher
 import com.dimadesu.screenstreamergo.stream.StreamState
 import com.dimadesu.screenstreamergo.utils.showAlertDialog
@@ -35,27 +32,13 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val streamManager by lazy {
-        StreamManager.getInstance(this)
-    }
+    private val viewModel: MainViewModel by viewModels()
 
-    private val streamLauncher = StreamPermissionLauncher(
+    private val permissionLauncher = StreamPermissionLauncher(
         activity = this,
-        onConsentGranted = { resultCode, data ->
-            streamManager.startStreaming(
-                resultCode = resultCode,
-                resultData = data,
-                onStarted = { moveTaskToBack(true) }
-            )
-        },
-        onConsentDenied = {
-            binding.liveButton.isChecked = false
-        }
+        onConsentGranted = viewModel::startStreaming,
+        onConsentDenied = { binding.liveButton.isChecked = false }
     )
-
-    private val requestNotificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* silently proceed whether granted or not */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,9 +46,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        permissionLauncher.requestNotificationPermission()
 
         binding.actions.setOnClickListener {
             showPopup()
@@ -74,23 +55,32 @@ class MainActivity : AppCompatActivity() {
         binding.liveButton.setOnCheckedChangeListener { view, isChecked ->
             if (view.isPressed) {
                 if (isChecked) {
-                    streamLauncher.launch()
+                    permissionLauncher.launch()
                 } else {
-                    streamManager.stopStreaming()
+                    viewModel.stopStreaming()
                 }
             }
         }
 
-        observeStreamState()
+        observeViewModel()
     }
 
-    private fun observeStreamState() {
+    private fun observeViewModel() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                streamManager.state.collect { state ->
-                    binding.liveButton.isChecked = (state is StreamState.Streaming)
-                    if (state is StreamState.Error) {
-                        showAlertDialog("Error", state.message)
+                launch {
+                    viewModel.state.collect { state ->
+                        binding.liveButton.isChecked = (state is StreamState.Streaming)
+                        if (state is StreamState.Error) {
+                            showAlertDialog("Error", state.message)
+                        }
+                    }
+                }
+                launch {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            MainEvent.StreamStarted -> moveTaskToBack(true)
+                        }
                     }
                 }
             }
