@@ -16,17 +16,11 @@
 package com.dimadesu.screenstreamergo
 
 import android.Manifest
-import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
-import android.view.Menu
-import android.view.MenuInflater
 import android.widget.PopupMenu
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -34,8 +28,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
 import com.dimadesu.screenstreamergo.stream.StreamManager
+import com.dimadesu.screenstreamergo.stream.StreamPermissionLauncher
 import com.dimadesu.screenstreamergo.stream.StreamState
-import io.github.thibaultbee.streampack.core.streamers.utils.MediaProjectionUtils
+import com.dimadesu.screenstreamergo.utils.showAlertDialog
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
@@ -43,6 +38,24 @@ class MainActivity : AppCompatActivity() {
     private val streamManager by lazy {
         StreamManager.getInstance(this)
     }
+
+    private val streamLauncher = StreamPermissionLauncher(
+        activity = this,
+        onConsentGranted = { resultCode, data ->
+            streamManager.startStreaming(
+                resultCode = resultCode,
+                resultData = data,
+                onStarted = { moveTaskToBack(true) }
+            )
+        },
+        onConsentDenied = {
+            binding.liveButton.isChecked = false
+        }
+    )
+
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* silently proceed whether granted or not */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -54,12 +67,6 @@ class MainActivity : AppCompatActivity() {
             requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        observeStreamState()
-    }
-
-    override fun onResume() {
-        super.onResume()
-
         binding.actions.setOnClickListener {
             showPopup()
         }
@@ -67,12 +74,14 @@ class MainActivity : AppCompatActivity() {
         binding.liveButton.setOnCheckedChangeListener { view, isChecked ->
             if (view.isPressed) {
                 if (isChecked) {
-                    requestAudioPermissionsLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    streamLauncher.launch()
                 } else {
                     streamManager.stopStreaming()
                 }
             }
         }
+
+        observeStreamState()
     }
 
     private fun observeStreamState() {
@@ -81,100 +90,25 @@ class MainActivity : AppCompatActivity() {
                 streamManager.state.collect { state ->
                     binding.liveButton.isChecked = (state is StreamState.Streaming)
                     if (state is StreamState.Error) {
-                        showAlertDialog(this@MainActivity, "Error", state.message)
+                        showAlertDialog("Error", state.message)
                     }
                 }
             }
         }
     }
 
-    private val requestNotificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* silently proceed whether granted or not */ }
-
-    private val requestAudioPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (!isGranted) {
-            showPermissionAlertDialog(this) { this.finish() }
-        } else {
-            screenCaptureLauncher.launch(
-                MediaProjectionUtils.createScreenCaptureIntent(
-                    this
-                )
-            )
-        }
-    }
-
-    private val screenCaptureLauncher =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val data = result.data
-            if (result.resultCode == RESULT_OK && data != null) {
-                streamManager.startStreaming(
-                    resultCode = result.resultCode,
-                    resultData = data,
-                    onStarted = { moveTaskToBack(true) }
-                )
-            } else {
-                binding.liveButton.isChecked = false
-            }
-        }
-
     private fun showPopup() {
-        val popup = PopupMenu(this, binding.actions)
-        val inflater: MenuInflater = popup.menuInflater
-        inflater.inflate(R.menu.actions, popup.menu)
-        popup.show()
-        popup.setOnMenuItemClickListener {
-            if (it.itemId == R.id.action_settings) {
-                goToSettingsActivity()
-            } else {
-                Log.e(TAG, "Unknown menu item ${it.itemId}")
+        PopupMenu(this, binding.actions).apply {
+            menuInflater.inflate(R.menu.actions, menu)
+            setOnMenuItemClickListener { menuItem ->
+                if (menuItem.itemId == R.id.action_settings) {
+                    startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                    true
+                } else {
+                    false
+                }
             }
-            true
+            show()
         }
-    }
-
-    private fun goToSettingsActivity() {
-        val intent = Intent(this, SettingsActivity::class.java)
-        startActivity(intent)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.actions, menu)
-        return true
-    }
-
-    private fun showAlertDialog(
-        context: Context, title: String, message: String, afterPositiveButton: () -> Unit = {}
-    ) {
-        AlertDialog.Builder(context).setTitle(title).setMessage(message)
-            .setPositiveButton(android.R.string.ok) { dialogInterface: DialogInterface, _: Int ->
-                dialogInterface.dismiss()
-                afterPositiveButton()
-            }.show()
-    }
-
-    private fun showAlertDialog(
-        context: Context,
-        titleResourceId: Int,
-        messageResourceId: Int,
-        afterPositiveButton: () -> Unit = {}
-    ) {
-        AlertDialog.Builder(context).setTitle(titleResourceId).setMessage(messageResourceId)
-            .setPositiveButton(android.R.string.ok) { dialogInterface: DialogInterface, _: Int ->
-                dialogInterface.dismiss()
-                afterPositiveButton()
-            }.show()
-    }
-
-    private fun showPermissionAlertDialog(
-        context: Context, afterPositiveButton: () -> Unit = {}
-    ) = showAlertDialog(
-        context, R.string.permission, R.string.permission_not_granted, afterPositiveButton
-    )
-
-    companion object {
-        private const val TAG = "MainActivity"
     }
 }
