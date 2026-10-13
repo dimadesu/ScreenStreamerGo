@@ -65,16 +65,6 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
 
     // Base onCreate() already starts foreground with the mediaProjection type; only
     // add the microphone type while actively streaming so its scope matches actual use.
-    override fun onCreate() {
-        super.onCreate()
-        isRunning = true
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        isRunning = false
-    }
-
     override fun onStreamingStart() {
         super.onStreamingStart()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -190,7 +180,6 @@ class DemoMediaProjectionService : MediaProjectionService<ISingleStreamer>(
     }
 
     companion object {
-        var isRunning = false
         internal const val AUDIO_INPUT_KEY = "audioInput"
         internal const val AUDIO_INPUT_MICROPHONE_KEY = "microphone"
         internal const val AUDIO_INPUT_MEDIA_PROJECTION_KEY = "mediaProjection"

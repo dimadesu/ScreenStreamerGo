@@ -32,12 +32,10 @@ import io.github.thibaultbee.streampack.core.elements.endpoints.composites.Compo
 import io.github.thibaultbee.streampack.core.elements.endpoints.composites.muxers.ts.TSMuxerInfo
 import io.github.thibaultbee.streampack.core.streamers.infos.StreamerConfigurationInfo
 import io.github.thibaultbee.streampack.ext.flv.elements.endpoints.composites.muxer.FlvMuxerInfo
-import android.content.Intent
 import com.dimadesu.screenstreamergo.R
-import com.dimadesu.screenstreamergo.models.Actions
 import com.dimadesu.screenstreamergo.models.EndpointFactory
 import com.dimadesu.screenstreamergo.models.EndpointType
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
+import com.dimadesu.screenstreamergo.stream.StreamController
 
 class SettingsFragment : PreferenceFragmentCompat() {
     private lateinit var streamerInfo: StreamerConfigurationInfo
@@ -238,17 +236,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         }
 
         audioInputListPreference.setOnPreferenceChangeListener { _, newValue ->
-            if (DemoMediaProjectionService.isRunning) {
-                val intent = Intent(requireContext(), DemoMediaProjectionService::class.java).apply {
-                    action = Actions.CHANGE_AUDIO_INPUT.value
-                    val audioInputValue = when (newValue) {
-                        "mediaProjection" -> DemoMediaProjectionService.AUDIO_INPUT_MEDIA_PROJECTION_KEY
-                        else -> DemoMediaProjectionService.AUDIO_INPUT_MICROPHONE_KEY
-                    }
-                    putExtra(DemoMediaProjectionService.AUDIO_INPUT_KEY, audioInputValue)
-                }
-                requireContext().startService(intent)
-            }
+            StreamController.getInstance(requireContext()).changeAudioInput(newValue as String)
             true
         }
     }

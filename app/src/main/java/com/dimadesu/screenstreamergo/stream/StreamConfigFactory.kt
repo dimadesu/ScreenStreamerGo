@@ -15,14 +15,10 @@
  */
 package com.dimadesu.screenstreamergo.stream
 
-import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.hardware.display.DisplayManager
-import android.util.Log
 import android.view.Display
-import androidx.core.app.ActivityCompat
 import androidx.core.net.toUri
 import com.dimadesu.screenstreamergo.Configuration
 import com.dimadesu.screenstreamergo.models.EndpointType
@@ -34,28 +30,17 @@ import io.github.thibaultbee.streampack.core.configuration.mediadescriptor.Media
 import io.github.thibaultbee.streampack.core.configuration.mediadescriptor.UriMediaDescriptor
 import io.github.thibaultbee.streampack.core.elements.encoders.mediacodec.MediaCodecHelper
 import io.github.thibaultbee.streampack.core.elements.endpoints.composites.muxers.ts.data.TSServiceInfo
-import io.github.thibaultbee.streampack.core.interfaces.startStream
-import io.github.thibaultbee.streampack.core.streamers.IConfigurableAudioStreamer
-import io.github.thibaultbee.streampack.core.streamers.IVideoStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamerAudioConfig
-import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamerVideoConfig
-import io.github.thibaultbee.streampack.core.streamers.dual.IAudioDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.IDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.IVideoDualStreamer
 import io.github.thibaultbee.streampack.core.streamers.single.AudioConfig
-import io.github.thibaultbee.streampack.core.streamers.single.IAudioSingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.ISingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.IVideoSingleStreamer
 import io.github.thibaultbee.streampack.core.streamers.single.VideoConfig
 import io.github.thibaultbee.streampack.ext.srt.configuration.mediadescriptor.SrtMediaDescriptor
 
 /**
- * Coordinates the core streaming pipeline:
- * - Prepares Source parameters (audio source type, target FPS) for the projection service.
- * - Configures Video & Audio Encoders based on device capabilities and app configuration.
- * - Resolves Endpoint descriptors (SRT or RTMP) and initiates or stops stream transmission.
+ * Translates the user's [Configuration] into StreamPack configuration objects.
+ *
+ * Has no side effects and no knowledge of the service or streamer lifecycle,
+ * which makes it the easiest part of the pipeline to test.
  */
-class StreamCoordinator(
+class StreamConfigFactory(
     private val context: Context,
     val configuration: Configuration = Configuration(context)
 ) {
@@ -68,9 +53,9 @@ class StreamCoordinator(
         )
 
     /**
-     * Calculates the device screen refresh rate and checks compatibility with the chosen video encoder.
+     * Device screen refresh rate if the chosen video encoder supports it, otherwise 30.
      */
-    fun getCalculatedFps(): Int {
+    fun fps(): Int {
         val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         val deviceRefreshRate = displayManager.getDisplay(Display.DEFAULT_DISPLAY).refreshRate.toInt()
         return if (MediaCodecHelper.Video.getFramerateRange(configuration.video.encoder)
@@ -86,31 +71,27 @@ class StreamCoordinator(
      * Populates intent extras needed by [com.dimadesu.screenstreamergo.services.DemoMediaProjectionService]
      * to initialize video/audio sources.
      */
-    fun prepareServiceExtras(extras: Intent) {
-        val audioInputValue = when (configuration.audio.audioInput) {
-            "mediaProjection" -> AUDIO_INPUT_MEDIA_PROJECTION_KEY
-            else -> AUDIO_INPUT_MICROPHONE_KEY
-        }
-        extras.putExtra(AUDIO_INPUT_KEY, audioInputValue)
-        extras.putExtra(CFR_FPS_KEY, getCalculatedFps())
+    fun putServiceExtras(extras: Intent) {
+        extras.putExtra(AUDIO_INPUT_KEY, audioInputExtra(configuration.audio.audioInput))
+        extras.putExtra(CFR_FPS_KEY, fps())
     }
 
     /**
      * Creates the [VideoConfig] for the video encoder stage.
      */
-    fun createVideoConfig(): VideoConfig {
+    fun videoConfig(): VideoConfig {
         return VideoConfig(
             mimeType = configuration.video.encoder,
             startBitrate = configuration.video.bitrate * 1000, // to b/s
             resolution = configuration.video.resolution,
-            fps = getCalculatedFps()
+            fps = fps()
         )
     }
 
     /**
      * Creates the [AudioConfig] for the audio encoder stage.
      */
-    fun createAudioConfig(): AudioConfig {
+    fun audioConfig(): AudioConfig {
         return AudioConfig(
             mimeType = configuration.audio.encoder,
             startBitrate = configuration.audio.bitrate,
@@ -123,7 +104,7 @@ class StreamCoordinator(
     /**
      * Creates the destination [MediaDescriptor] for the sender stage (SRT or RTMP).
      */
-    fun createMediaDescriptor(): MediaDescriptor {
+    fun mediaDescriptor(): MediaDescriptor {
         return when (configuration.endpoint.type) {
             EndpointType.SRT -> SrtMediaDescriptor(
                 configuration.endpoint.srt.ip,
@@ -136,64 +117,13 @@ class StreamCoordinator(
         }
     }
 
-    /**
-     * Sequentially configures the video and audio encoders on the streamer.
-     */
-    suspend fun configure(streamer: IVideoStreamer<*>) {
-        val videoConfig = createVideoConfig()
-        when (streamer) {
-            is IVideoSingleStreamer -> streamer.setVideoConfig(videoConfig)
-            is IVideoDualStreamer -> streamer.setVideoConfig(DualStreamerVideoConfig(videoConfig))
-            else -> throw IllegalStateException("Streamer is not a supported video streamer")
-        }
-
-        if (streamer !is IConfigurableAudioStreamer<*>) {
-            Log.e(TAG, "Streamer does not support audio configuration")
-            return
-        }
-
-        if (ActivityCompat.checkSelfPermission(
-                context, Manifest.permission.RECORD_AUDIO
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            throw SecurityException("Permission RECORD_AUDIO must have been granted!")
-        }
-
-        val audioConfig = createAudioConfig()
-        when (streamer) {
-            is IAudioSingleStreamer -> streamer.setAudioConfig(audioConfig)
-            is IAudioDualStreamer -> streamer.setAudioConfig(DualStreamerAudioConfig(audioConfig))
-            else -> throw IllegalStateException("Streamer is not an audio streamer")
-        }
-    }
-
-    /**
-     * Resolves the media descriptor and starts streaming.
-     */
-    suspend fun startStream(streamer: IVideoStreamer<*>) {
-        val descriptor = createMediaDescriptor()
-        when (streamer) {
-            is ISingleStreamer -> streamer.startStream(descriptor)
-            is IDualStreamer -> {
-                Log.w(TAG, "Only first output will be used")
-                streamer.first.startStream(descriptor)
-            }
-            else -> throw IllegalStateException("Streamer is not a supported streamer")
-        }
-    }
-
-    /**
-     * Stops the stream and releases the streamer resources.
-     */
-    suspend fun stopStream(streamer: IVideoStreamer<*>?) {
-        try {
-            streamer?.stopStream()
-        } finally {
-            streamer?.close()
-        }
-    }
-
     companion object {
-        private const val TAG = "StreamCoordinator"
+        /**
+         * Maps the audio input preference value to the extra value understood by the service.
+         */
+        fun audioInputExtra(preferenceValue: String?): String = when (preferenceValue) {
+            "mediaProjection" -> AUDIO_INPUT_MEDIA_PROJECTION_KEY
+            else -> AUDIO_INPUT_MICROPHONE_KEY
+        }
     }
 }

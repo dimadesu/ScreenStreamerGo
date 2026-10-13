@@ -13,35 +13,50 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.dimadesu.screenstreamergo.stream
+package com.dimadesu.screenstreamergo
 
 import android.Manifest
 import android.app.Activity
-import android.os.Build
 import android.content.Intent
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
-import com.dimadesu.screenstreamergo.utils.showPermissionAlertDialog
 import io.github.thibaultbee.streampack.core.streamers.utils.MediaProjectionUtils
+
+/**
+ * Outcome of [StreamPermissionRequester.request].
+ */
+sealed interface StreamPermissionResult {
+    /** Both RECORD_AUDIO and MediaProjection consent were granted. */
+    data class Granted(val resultCode: Int, val data: Intent) : StreamPermissionResult
+
+    /** The user denied RECORD_AUDIO. */
+    object AudioDenied : StreamPermissionResult
+
+    /** The user dismissed the MediaProjection consent dialog. */
+    object ScreenCaptureDenied : StreamPermissionResult
+}
 
 /**
  * Handles the two-stage permission flow for screen streaming:
  * 1. Checks and requests the [Manifest.permission.RECORD_AUDIO] permission.
  * 2. Launches the Android MediaProjection consent dialog upon audio permission approval.
+ *
+ * Only reports the outcome; how to react (dialogs, closing the screen) is up to the caller.
+ * Must be constructed before the activity reaches STARTED (e.g. as a property initializer).
  */
-class StreamPermissionLauncher(
+class StreamPermissionRequester(
     activity: ComponentActivity,
-    private val onConsentGranted: (resultCode: Int, data: Intent) -> Unit,
-    private val onConsentDenied: () -> Unit
+    private val onResult: (StreamPermissionResult) -> Unit
 ) {
     private val screenCaptureLauncher = activity.registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         val data = result.data
         if (result.resultCode == Activity.RESULT_OK && data != null) {
-            onConsentGranted(result.resultCode, data)
+            onResult(StreamPermissionResult.Granted(result.resultCode, data))
         } else {
-            onConsentDenied()
+            onResult(StreamPermissionResult.ScreenCaptureDenied)
         }
     }
 
@@ -53,8 +68,7 @@ class StreamPermissionLauncher(
                 MediaProjectionUtils.createScreenCaptureIntent(activity)
             )
         } else {
-            activity.showPermissionAlertDialog { activity.finish() }
-            onConsentDenied()
+            onResult(StreamPermissionResult.AudioDenied)
         }
     }
 
@@ -74,7 +88,7 @@ class StreamPermissionLauncher(
     /**
      * Initiates the audio permission check, chaining into the screen capture prompt.
      */
-    fun launch() {
+    fun request() {
         audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
     }
 }

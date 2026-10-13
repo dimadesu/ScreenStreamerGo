@@ -19,26 +19,37 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.PopupMenu
 import androidx.activity.viewModels
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
-import com.dimadesu.screenstreamergo.stream.StreamPermissionLauncher
 import com.dimadesu.screenstreamergo.stream.StreamState
-import com.dimadesu.screenstreamergo.utils.showAlertDialog
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
 
-    private val permissionLauncher = StreamPermissionLauncher(
-        activity = this,
-        onConsentGranted = viewModel::startStreaming,
-        onConsentDenied = { binding.liveButton.isChecked = false }
-    )
+    private val permissions = StreamPermissionRequester(this) { result ->
+        when (result) {
+            is StreamPermissionResult.Granted ->
+                viewModel.startStreaming(result.resultCode, result.data)
+
+            StreamPermissionResult.AudioDenied -> {
+                binding.liveButton.isChecked = false
+                showDialog(
+                    getString(R.string.permission),
+                    getString(R.string.permission_not_granted)
+                ) { finish() }
+            }
+
+            StreamPermissionResult.ScreenCaptureDenied ->
+                binding.liveButton.isChecked = false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        permissionLauncher.requestNotificationPermission()
+        permissions.requestNotificationPermission()
 
         binding.actions.setOnClickListener {
             showPopup()
@@ -55,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         binding.liveButton.setOnCheckedChangeListener { view, isChecked ->
             if (view.isPressed) {
                 if (isChecked) {
-                    permissionLauncher.launch()
+                    permissions.request()
                 } else {
                     viewModel.stopStreaming()
                 }
@@ -70,21 +81,30 @@ class MainActivity : AppCompatActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
                     viewModel.state.collect { state ->
-                        binding.liveButton.isChecked = (state is StreamState.Streaming)
-                        if (state is StreamState.Error) {
-                            showAlertDialog("Error", state.message)
-                        }
+                        binding.liveButton.isChecked = state != StreamState.Idle
                     }
                 }
                 launch {
                     viewModel.events.collect { event ->
                         when (event) {
                             MainEvent.StreamStarted -> moveTaskToBack(true)
+                            is MainEvent.Error -> showDialog("Error", event.message)
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun showDialog(title: String, message: String, onConfirm: () -> Unit = {}) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                dialog.dismiss()
+                onConfirm()
+            }
+            .show()
     }
 
     private fun showPopup() {

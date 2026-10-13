@@ -68,27 +68,27 @@ class ExampleInstrumentedTest {
     }
 
     @Test
-    fun streamCoordinator_buildsValidConfigsAndDescriptors() {
+    fun streamConfigFactory_buildsValidConfigsAndDescriptors() {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val coordinator = com.dimadesu.screenstreamergo.stream.StreamCoordinator(appContext)
+        val factory = com.dimadesu.screenstreamergo.stream.StreamConfigFactory(appContext)
 
-        val fps = coordinator.getCalculatedFps()
+        val fps = factory.fps()
         assertTrue("Calculated FPS must be > 0", fps > 0)
 
-        val videoConfig = coordinator.createVideoConfig()
+        val videoConfig = factory.videoConfig()
         assertNotNull(videoConfig)
         assertEquals(fps, videoConfig.fps)
         assertTrue("Bitrate must be positive", videoConfig.startBitrate > 0)
 
-        val audioConfig = coordinator.createAudioConfig()
+        val audioConfig = factory.audioConfig()
         assertNotNull(audioConfig)
         assertTrue("Sample rate must be positive", audioConfig.sampleRate > 0)
 
-        val descriptor = coordinator.createMediaDescriptor()
+        val descriptor = factory.mediaDescriptor()
         assertNotNull("MediaDescriptor must not be null", descriptor)
 
         val intent = android.content.Intent()
-        coordinator.prepareServiceExtras(intent)
+        factory.putServiceExtras(intent)
         assertTrue(
             "Extra must have audio input key",
             intent.hasExtra(com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.AUDIO_INPUT_KEY)
@@ -100,15 +100,15 @@ class ExampleInstrumentedTest {
     }
 
     @Test
-    fun streamManager_initializesInIdleState() {
+    fun streamController_initializesInIdleState() {
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        val manager = com.dimadesu.screenstreamergo.stream.StreamManager.getInstance(appContext)
+        val controller = com.dimadesu.screenstreamergo.stream.StreamController.getInstance(appContext)
 
         assertTrue(
             "Initial state must be Idle",
-            manager.state.value is com.dimadesu.screenstreamergo.stream.StreamState.Idle
+            controller.state.value is com.dimadesu.screenstreamergo.stream.StreamState.Idle
         )
-        assertFalse("Initially isStreaming should be false", manager.isStreaming)
+        assertFalse("Initially isStreaming should be false", controller.isStreaming)
     }
 
     @Test
