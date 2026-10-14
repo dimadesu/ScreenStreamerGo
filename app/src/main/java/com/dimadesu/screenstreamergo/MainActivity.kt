@@ -15,74 +15,41 @@
  */
 package com.dimadesu.screenstreamergo
 
-import android.Manifest
-import android.content.Context
-import android.content.DialogInterface
 import android.content.Intent
-import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.hardware.display.DisplayManager
-import android.os.Build
 import android.os.Bundle
-import android.util.Log
-import android.view.Display
-import android.view.Menu
-import android.view.MenuInflater
 import android.widget.PopupMenu
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.net.toUri
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import io.github.thibaultbee.streampack.core.configuration.mediadescriptor.UriMediaDescriptor
-import io.github.thibaultbee.streampack.core.elements.encoders.mediacodec.MediaCodecHelper
-import io.github.thibaultbee.streampack.core.elements.endpoints.composites.muxers.ts.data.TSServiceInfo
-import io.github.thibaultbee.streampack.core.interfaces.startStream
-import io.github.thibaultbee.streampack.core.streamers.IConfigurableAudioStreamer
-import io.github.thibaultbee.streampack.core.streamers.IVideoStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamerAudioConfig
-import io.github.thibaultbee.streampack.core.streamers.dual.DualStreamerVideoConfig
-import io.github.thibaultbee.streampack.core.streamers.dual.IAudioDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.IDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.dual.IVideoDualStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.AudioConfig
-import io.github.thibaultbee.streampack.core.streamers.single.IAudioSingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.ISingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.IVideoSingleStreamer
-import io.github.thibaultbee.streampack.core.streamers.single.VideoConfig
-import io.github.thibaultbee.streampack.core.streamers.utils.MediaProjectionUtils
-import io.github.thibaultbee.streampack.ext.srt.configuration.mediadescriptor.SrtMediaDescriptor
+import androidx.lifecycle.repeatOnLifecycle
 import com.dimadesu.screenstreamergo.databinding.ActivityMainBinding
-import com.dimadesu.screenstreamergo.models.EndpointType
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_MEDIA_PROJECTION_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.AUDIO_INPUT_MICROPHONE_KEY
-import com.dimadesu.screenstreamergo.services.DemoMediaProjectionService.Companion.CFR_FPS_KEY
 import com.dimadesu.screenstreamergo.settings.SettingsActivity
-import io.github.thibaultbee.streampack.services.MediaProjectionService
-import kotlinx.coroutines.flow.drop
+import com.dimadesu.screenstreamergo.stream.StreamState
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
-    private val configuration by lazy {
-        Configuration(this)
+    private val viewModel: MainViewModel by viewModels()
+
+    private val permissions = StreamPermissionRequester(this) { result ->
+        when (result) {
+            is StreamPermissionResult.Granted ->
+                viewModel.startStreaming(result.resultCode, result.data)
+
+            StreamPermissionResult.AudioDenied -> {
+                binding.liveButton.isChecked = false
+                showDialog(
+                    getString(R.string.permission),
+                    getString(R.string.permission_not_granted)
+                ) { finish() }
+            }
+
+            StreamPermissionResult.ScreenCaptureDenied ->
+                binding.liveButton.isChecked = false
+        }
     }
-
-    private val tsServiceInfo: TSServiceInfo
-        get() = TSServiceInfo(
-            TSServiceInfo.ServiceType.DIGITAL_TV,
-            0x4698,
-            configuration.muxer.service,
-            configuration.muxer.provider
-        )
-
-    private var connection: ServiceConnection? = null
-
-    private var streamer: IVideoStreamer<*>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,13 +57,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
+        permissions.requestNotificationPermission()
 
         binding.actions.setOnClickListener {
             showPopup()
@@ -105,257 +66,59 @@ class MainActivity : AppCompatActivity() {
         binding.liveButton.setOnCheckedChangeListener { view, isChecked ->
             if (view.isPressed) {
                 if (isChecked) {
-                    requestAudioPermissionsLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    permissions.request()
                 } else {
-                    runBlocking {
-                        streamer?.stopStream()
-                        streamer?.close()
-                    }
-                    connection?.let { unbindService(it) }
-                    connection = null
-                    val intent = Intent(this@MainActivity, DemoMediaProjectionService::class.java)
-                    stopService(intent)
+                    viewModel.stopStreaming()
                 }
             }
         }
+
+        observeViewModel()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        connection?.let { unbindService(it) }
-        connection = null
-    }
-
-    private val requestNotificationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { /* silently proceed whether granted or not */ }
-
-    private val requestAudioPermissionsLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (!isGranted) {
-            showPermissionAlertDialog(this) { this.finish() }
-        } else {
-            getContent.launch(
-                MediaProjectionUtils.createScreenCaptureIntent(
-                    this
-                )
-            )
-        }
-    }
-
-    private var getContent =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            val intent = Intent(this, DemoMediaProjectionService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent)
-            } else {
-                startService(intent)
-            }
-            connection = MediaProjectionService.bindService(
-                context = this,
-                serviceClass = DemoMediaProjectionService::class.java,
-                resultCode = result.resultCode,
-                resultData = result.data!!,
-                onServiceCreated = { streamer ->
-                    streamer as IVideoStreamer<*> // Cast to streamer type
-                    lifecycleScope.launch {
-                        try {
-                            configure(streamer)
-                        } catch (t: Throwable) {
-                            this@MainActivity.showAlertDialog(
-                                this@MainActivity, "Error", t.message ?: "Unknown error"
-                            )
-                            binding.liveButton.isChecked = false
-                            Log.e(TAG, "Error while starting streamer", t)
-                        }
-                        startStream(streamer)
-                    }
-                    lifecycleScope.launch {
-                        streamer.isStreamingFlow.collect { isStreaming ->
-                            binding.liveButton.isChecked = isStreaming
-                        }
-                    }
-                    lifecycleScope.launch {
-                        streamer.isStreamingFlow.drop(1).collect { isStreaming ->
-                            if (!isStreaming) {
-                                // Clean up so the next start gets a fresh service & MediaProjection.
-                                connection?.let { unbindService(it) }
-                                connection = null
-                                this@MainActivity.streamer = null
-                            }
-                        }
-                    }
-                    this.streamer = streamer
-                },
-                onServiceDisconnected = {
-                    streamer = null
-                    Log.i(TAG, "Service disconnected")
-                },
-                onExtra = { extra ->
-                    val audioInputValue = when (configuration.audio.audioInput) {
-                        "mediaProjection" -> AUDIO_INPUT_MEDIA_PROJECTION_KEY
-                        else -> AUDIO_INPUT_MICROPHONE_KEY
-                    }
-                    extra.putExtra(AUDIO_INPUT_KEY, audioInputValue)
-                    extra.putExtra(CFR_FPS_KEY, getCalculatedFps())
-                }
-            )
-        }
-
-    private fun getCalculatedFps(): Int {
-        val deviceRefreshRate =
-            (this.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager).getDisplay(
-                Display.DEFAULT_DISPLAY
-            ).refreshRate.toInt()
-        return if (MediaCodecHelper.Video.getFramerateRange(configuration.video.encoder)
-                .contains(deviceRefreshRate)
-        ) {
-            deviceRefreshRate
-        } else {
-            30
-        }
-    }
-
-    private fun configure(streamer: IVideoStreamer<*>) {
-        val fps = getCalculatedFps()
-
-        val videoConfig = VideoConfig(
-            mimeType = configuration.video.encoder,
-            startBitrate = configuration.video.bitrate * 1000, // to b/s
-            resolution = configuration.video.resolution,
-            fps = fps
-        )
+    private fun observeViewModel() {
         lifecycleScope.launch {
-            when (streamer) {
-                is IVideoSingleStreamer -> streamer.setVideoConfig(videoConfig)
-                is IVideoDualStreamer -> streamer.setVideoConfig(DualStreamerVideoConfig(videoConfig))
-                else -> throw IllegalStateException("Streamer is not a supported streamer")
-            }
-        }
-
-        if (streamer !is IConfigurableAudioStreamer<*>) {
-            Log.e(TAG, "Streamer does not support audio configuration")
-            return
-        }
-
-        val audioConfig = AudioConfig(
-            mimeType = configuration.audio.encoder,
-            startBitrate = configuration.audio.bitrate,
-            sampleRate = configuration.audio.sampleRate,
-            channelConfig = AudioConfig.getChannelConfig(configuration.audio.numberOfChannels),
-            byteFormat = configuration.audio.byteFormat
-        )
-
-        if (ActivityCompat.checkSelfPermission(
-                this, Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            lifecycleScope.launch {
-                when (streamer) {
-                    is IAudioSingleStreamer -> streamer.setAudioConfig(audioConfig)
-                    is IAudioDualStreamer -> streamer.setAudioConfig(
-                        DualStreamerAudioConfig(
-                            audioConfig
-                        )
-                    )
-
-                    else -> throw IllegalStateException("Streamer is not a audio streamer")
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                launch {
+                    viewModel.state.collect { state ->
+                        binding.liveButton.isChecked = state != StreamState.Idle
+                    }
+                }
+                launch {
+                    viewModel.events.collect { event ->
+                        when (event) {
+                            MainEvent.StreamStarted -> moveTaskToBack(true)
+                            is MainEvent.Error -> showDialog("Error", event.message)
+                        }
+                    }
                 }
             }
-        } else {
-            throw SecurityException("Permission RECORD_AUDIO must have been granted!")
         }
     }
 
-    private suspend fun startStream(streamer: IVideoStreamer<*>) {
-        try {
-            val descriptor = when (configuration.endpoint.type) {
-                EndpointType.SRT -> SrtMediaDescriptor(
-                    configuration.endpoint.srt.ip,
-                    configuration.endpoint.srt.port,
-                    configuration.endpoint.srt.streamID,
-                    configuration.endpoint.srt.passPhrase,
-                    serviceInfo = tsServiceInfo
-                )
-
-                EndpointType.RTMP -> UriMediaDescriptor(configuration.endpoint.rtmp.url.toUri())
+    private fun showDialog(title: String, message: String, onConfirm: () -> Unit = {}) {
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton(android.R.string.ok) { dialog, _ ->
+                dialog.dismiss()
+                onConfirm()
             }
-
-            when (streamer) {
-                is ISingleStreamer -> streamer.startStream(descriptor)
-
-                is IDualStreamer -> {
-                    Log.w(TAG, "Only first output will be used")
-                    streamer.first.startStream(descriptor)
-                }
-
-                else -> throw IllegalStateException("Streamer is not a supported streamer")
-            }
-            moveTaskToBack(true)
-        } catch (t: Throwable) {
-            this.showAlertDialog(
-                this, "Error", t.message ?: "Unknown error"
-            )
-            Log.e(TAG, "Error while starting streamer", t)
-        }
+            .show()
     }
 
     private fun showPopup() {
-        val popup = PopupMenu(this, binding.actions)
-        val inflater: MenuInflater = popup.menuInflater
-        inflater.inflate(R.menu.actions, popup.menu)
-        popup.show()
-        popup.setOnMenuItemClickListener {
-            if (it.itemId == R.id.action_settings) {
-                goToSettingsActivity()
-            } else {
-                Log.e(TAG, "Unknown menu item ${it.itemId}")
+        PopupMenu(this, binding.actions).apply {
+            menuInflater.inflate(R.menu.actions, menu)
+            setOnMenuItemClickListener { menuItem ->
+                if (menuItem.itemId == R.id.action_settings) {
+                    startActivity(Intent(this@MainActivity, SettingsActivity::class.java))
+                    true
+                } else {
+                    false
+                }
             }
-            true
+            show()
         }
-    }
-
-    private fun goToSettingsActivity() {
-        val intent = Intent(this, SettingsActivity::class.java)
-        startActivity(intent)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.actions, menu)
-        return true
-    }
-
-    private fun showAlertDialog(
-        context: Context, title: String, message: String, afterPositiveButton: () -> Unit = {}
-    ) {
-        AlertDialog.Builder(context).setTitle(title).setMessage(message)
-            .setPositiveButton(android.R.string.ok) { dialogInterface: DialogInterface, _: Int ->
-                dialogInterface.dismiss()
-                afterPositiveButton()
-            }.show()
-    }
-
-    private fun showAlertDialog(
-        context: Context,
-        titleResourceId: Int,
-        messageResourceId: Int,
-        afterPositiveButton: () -> Unit = {}
-    ) {
-        AlertDialog.Builder(context).setTitle(titleResourceId).setMessage(messageResourceId)
-            .setPositiveButton(android.R.string.ok) { dialogInterface: DialogInterface, _: Int ->
-                dialogInterface.dismiss()
-                afterPositiveButton()
-            }.show()
-    }
-
-    private fun showPermissionAlertDialog(
-        context: Context, afterPositiveButton: () -> Unit = {}
-    ) = showAlertDialog(
-        context, R.string.permission, R.string.permission_not_granted, afterPositiveButton
-    )
-
-    companion object {
-        private const val TAG = "MainActivity"
     }
 }
